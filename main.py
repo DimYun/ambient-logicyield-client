@@ -2,9 +2,6 @@
 
 from PyQt5 import QtCore, QtWidgets, QtGui, uic
 import time
-import datetime
-import pickle
-import copy
 import sqlite3
 import serial
 from serial.tools import list_ports
@@ -36,6 +33,7 @@ shv.logger.setLevel(logging.DEBUG)
 
 class MainWindow(QtWidgets.QMainWindow):
     datetime_format = 'dd-MM-yyyy HH:mm:ss'
+    device_num = 1
     device_com = None
     db_conn = None
     db_path = 'test.db'
@@ -81,6 +79,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Show program
         # self.show()
         # tray.setContextMenu(menu)
+        # Configure statusbar
+        # Setup timer for ambient data TODO: May slow down interface
+        self.timer = QtCore.QTimer()
+        self.timer.timeout.connect(self.generate_and_sent_signal)
+        self.timer.start(5000)
+
+        self.statusBar().showMessage("Dot Pulse ambient device No {}".format(self.device_num))
         shv.logger.info("Successfully init main class")
 
     def initdb(self):
@@ -119,14 +124,13 @@ class MainWindow(QtWidgets.QMainWindow):
         self.cb_devices.clear()
         self.cb_devices.addItems(self.available_com())
         self.cb_devices.setCurrentIndex(0)
-        # hp.option_tab.com_cb.setCurrentIndex(hp.option_tab.com_cb.count() - 1)
 
     def available_com(self):
         """
         Scan system for available COM (virtual COM) ports
         :return: list with available COM ports
         """
-        # Scan system for available COM (virtual COM) ports
+        shv.logger.debug("Init scan for COM ports")
         if os.name == 'nt':
             # Windows
             all_ports = []
@@ -151,7 +155,8 @@ class MainWindow(QtWidgets.QMainWindow):
         :param x: int data form COM port monitor thread (1 or 2)
         :return: None
         """
-        print('\t catches signal: ', x)
+        # TODO: set correct DB selection and graphics plot
+        shv.logger.debug("Catch {} COM port signal".format(x))
         cursor = self.db_conn.cursor()
         dtype = 'CO2'
         cursor.execute("""
@@ -159,11 +164,20 @@ class MainWindow(QtWidgets.QMainWindow):
                     """, (dtype, ))
         data = list(reversed([x for x in cursor.fetchall()]))
         self.l_date.setText('_'.join([str(x) for x in data[-1]]))
-        # try:
-        #     if int(x) == 1:
-        #         self.test_capture()  # start write images
-        # except ValueError:
-        #     pass
+
+    def generate_and_sent_signal(self):
+        """
+        Generate OS resourses data and print it on statusBar each second
+        :return: None
+        """
+        self.statusBar().showMessage(
+            "Dot Pulse device No {0} \t CPU: {1} %, \t Memory usage: {2} %, \t Free space: {3} %".format(
+                self.device_num,
+                psutil.cpu_percent(),
+                psutil.virtual_memory()[2],
+                psutil.disk_usage('/')[3]
+            )
+        )
 
     def hide_it(self):
         """
@@ -247,10 +261,4 @@ if __name__ == "__main__":
     # app.setStyle("Fusion")
     main_window = MainWindow()
     main_window.show()
-    # trayIcon = SystemTrayIcon(QtGui.QIcon("icon_1.png"), main_window)
-    # trayIcon.show()
-    # palette = QtGui.QPalette()
-    # palette.setColor(QtGui.QPalette.Window, QtGui.QColor(53, 53, 53))
-    # palette.setColor(QtGui.QPalette.WindowText, QtCore.Qt.white)
-    # app.setPalette(palette)
     sys.exit(app.exec_())
