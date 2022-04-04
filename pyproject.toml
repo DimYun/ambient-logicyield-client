@@ -8,6 +8,7 @@ authors = ["DimYun <Dm.Yunovidov@gmail.com>"]
 python = "^3.9"
 PyQt5 = "^5.15.6"
 pyserial = "^3.5"
+psutil = "^5.9.0"
 
 [tool.poetry.dev-dependencies]
 

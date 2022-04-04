@@ -9,6 +9,11 @@ import sqlite3
 import serial
 from serial.tools import list_ports
 import os
+import sys
+import psutil
+import logging
+
+import SharedVars as shv
 import ThreadCom
 
 """This module provides main structure and function of client program for get ambient data from PCB device"""
@@ -16,13 +21,25 @@ import ThreadCom
 __version__ = "0.1.0"
 __author__ = 'Yunovidov Dmitriy: Dm.Yunovidov@gmail.com'
 
+logging.basicConfig(
+    format='%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s',
+    handlers=[
+            logging.FileHandler("main-log.log", 'w'),
+            logging.StreamHandler(sys.stdout)
+        ]
+)
+
+shv.logger = logging.getLogger()
+
+shv.logger.setLevel(logging.DEBUG)
+
 
 class MainWindow(QtWidgets.QMainWindow):
-    daetime_format = 'dd-MM-yyyy HH:mm:ss'
-    thread_com_port = False
+    datetime_format = 'dd-MM-yyyy HH:mm:ss'
     device_com = None
     db_conn = None
     db_path = 'test.db'
+    thread = None  # COM data thread instance
 
     def __init__(self):
         super(QtWidgets.QMainWindow, self).__init__()
@@ -64,11 +81,13 @@ class MainWindow(QtWidgets.QMainWindow):
         # Show program
         # self.show()
         # tray.setContextMenu(menu)
+        shv.logger.info("Successfully init main class")
 
     def initdb(self):
         """
         Create necessary tables
         """
+        shv.logger.debug("Init {} database and {} table in it".format(self.db_path, 'ambient_data'))
         self.db_conn = sqlite3.connect(self.db_path)
         cursor = self.db_conn.cursor()
         cursor.execute("""
@@ -85,15 +104,12 @@ class MainWindow(QtWidgets.QMainWindow):
         Start COM port data get tread
         :return:
         """
+        shv.logger.debug("Init {} COM port connection and data thread".format(self.device_com))
         self.initdb()
         self.device_com = self.cb_devices.currentText()
-
         self.thread = ThreadCom.COMStartThread(device_com=self.device_com, db_path=self.db_path)
         self.thread.SER_UPDATE_SIGNAL.connect(lambda x: self.com_data(x))  # connect signal from thread
-
-        self.thread_com_port = True
         self.thread.start()
-        print('Serial work good')
 
     def refresh(self):
         """

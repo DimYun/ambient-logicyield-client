@@ -10,8 +10,8 @@ class COMStartThread (QtCore.QThread):
     ser = None  # serial device
     my_signal = QtCore.pyqtSignal()  # QtCore.pyqtSignal()
     count_ard_reboot = 0
-    ser = None
     SER_UPDATE_SIGNAL = QtCore.pyqtSignal('QString')
+    is_start = False
 
     def __init__(self, device_com, db_path, parent=None):
         QtCore.QThread.__init__(self, parent)
