@@ -10,6 +10,7 @@ import sys
 import psutil
 import logging
 
+import DataProcess as dp
 import SharedVars as shv
 import ThreadCom
 
@@ -18,17 +19,28 @@ import ThreadCom
 __version__ = "0.1.0"
 __author__ = 'Yunovidov Dmitriy: Dm.Yunovidov@gmail.com'
 
-logging.basicConfig(
-    format='%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s',
-    handlers=[
-            logging.FileHandler("main-log.log", 'w'),
-            logging.StreamHandler(sys.stdout)
-        ]
-)
-
-shv.logger = logging.getLogger()
-
+shv.logger = logging.getLogger('main_logger')
 shv.logger.setLevel(logging.DEBUG)
+# create file handler which logs even debug messages
+fh = logging.FileHandler('main-log.log', 'w')
+fh.setLevel(logging.DEBUG)
+# create console handler with a higher log level
+ch = logging.StreamHandler()
+ch.setLevel(logging.INFO)
+# create class handler with a higher log level for user messages
+clh = logging.StreamHandler(dp.InfoWindow())
+clh.setLevel(logging.WARNING)
+# create formatter and add it to the handlers
+formatter = logging.Formatter(
+    '%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s'
+)
+ch.setFormatter(formatter)
+fh.setFormatter(formatter)
+clh.setFormatter(formatter)
+# add the handlers to logger
+shv.logger.addHandler(clh)
+shv.logger.addHandler(ch)
+shv.logger.addHandler(fh)
 
 
 class MainWindow(QtWidgets.QMainWindow):
