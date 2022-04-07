@@ -3,6 +3,7 @@ import serial
 import time
 import sqlite3
 import datetime
+import SharedVars as shv
 
 
 class COMStartThread (QtCore.QThread):
@@ -58,11 +59,11 @@ class COMStartThread (QtCore.QThread):
         """
         #TODO: split on 2 funct: split string (use tests) and insert
         splitted = line.decode('utf-8').split(',')
-        if len(splitted) != 5 or not splitted[0].startswith('2022'):
+        if len(splitted) != 6 or not splitted[0] == 'LY':  # .startswith('2022'):
             # TODO: set flang for start of each line from arduino (first n bites)
-            # Partial data, skipping
-            return
+            return  # partial data, skipping
         print(line)
+        splitted = splitted[1:]  # drop data start symbols
         timestamp = list(map(int, splitted[0].split('_')))
         unixtime = int(time.mktime(datetime.datetime(*timestamp).timetuple()))
 

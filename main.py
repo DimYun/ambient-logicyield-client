@@ -1,6 +1,12 @@
 # -*- coding: utf-8 -*-
 
 from PyQt5 import QtCore, QtWidgets, QtGui, uic
+import matplotlib
+matplotlib.use('Qt5Agg')
+
+from matplotlib.backends.backend_qt5agg import FigureCanvasQTAgg, NavigationToolbar2QT as NavigationToolbar
+from matplotlib.figure import Figure
+
 import time
 import sqlite3
 import serial
@@ -15,32 +21,19 @@ import SharedVars as shv
 import ThreadCom
 
 """This module provides main structure and function of client program for get ambient data from PCB device"""
+# Plots: https://www.pythonguis.com/tutorials/plotting-matplotlib/
 
 __version__ = "0.1.0"
 __author__ = 'Yunovidov Dmitriy: Dm.Yunovidov@gmail.com'
 
-shv.logger = logging.getLogger('main_logger')
-shv.logger.setLevel(logging.DEBUG)
-# create file handler which logs even debug messages
-fh = logging.FileHandler('main-log.log', 'w')
-fh.setLevel(logging.DEBUG)
-# create console handler with a higher log level
-ch = logging.StreamHandler()
-ch.setLevel(logging.INFO)
-# create class handler with a higher log level for user messages
-clh = logging.StreamHandler(dp.InfoWindow())
-clh.setLevel(logging.WARNING)
-# create formatter and add it to the handlers
-formatter = logging.Formatter(
-    '%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s'
-)
-ch.setFormatter(formatter)
-fh.setFormatter(formatter)
-clh.setFormatter(formatter)
-# add the handlers to logger
-shv.logger.addHandler(clh)
-shv.logger.addHandler(ch)
-shv.logger.addHandler(fh)
+
+class MplCanvas(FigureCanvasQTAgg):
+
+    def __init__(self, parent=None, width=5, height=4, dpi=150):
+        fig = Figure(figsize=(width, height), dpi=dpi)
+        self.axes = fig.add_subplot(111)
+        super(MplCanvas, self).__init__(fig)
+
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -53,6 +46,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(QtWidgets.QMainWindow, self).__init__()
+        self.init_logger()  # init logging
         uic.loadUi("client_main.ui", self)
 
         self.setWindowTitle("Client Ambient Data")
@@ -97,8 +91,44 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.generate_and_sent_signal)
         self.timer.start(5000)
 
+        sc = MplCanvas(self, width=5, height=4, dpi=150)
+        sc.axes.plot([0, 1, 2, 3, 4], [10, 1, 20, 3, 40])
+
+        # Create toolbar, passing canvas as first parament, parent (self, the MainWindow) as second.
+        toolbar = NavigationToolbar(sc, self)
+
+        self.gridLayout.removeWidget(self.l_plot)
+        self.l_plot.close()
+        self.l_plot = NavigationToolbar(sc, self)
+        self.gridLayout.addWidget(self.l_plot, 4, 0)
+        self.gridLayout.update()
+
         self.statusBar().showMessage("Dot Pulse ambient device No {}".format(self.device_num))
         shv.logger.info("Successfully init main class")
+
+    def init_logger(self):
+        shv.logger = logging.getLogger('main_logger')
+        shv.logger.setLevel(logging.DEBUG)
+        # create file handler which logs even debug messages
+        fh = logging.FileHandler('main-log.log', 'w')
+        fh.setLevel(logging.DEBUG)
+        # create console handler with a higher log level
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        # create class handler with a higher log level for user messages
+        clh = logging.StreamHandler(dp.InfoWindow())
+        clh.setLevel(logging.WARNING)
+        # create formatter and add it to the handlers
+        formatter = logging.Formatter(
+            '%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s'
+        )
+        ch.setFormatter(formatter)
+        fh.setFormatter(formatter)
+        clh.setFormatter(formatter)
+        # add the handlers to logger
+        shv.logger.addHandler(clh)
+        shv.logger.addHandler(ch)
+        shv.logger.addHandler(fh)
 
     def initdb(self):
         """

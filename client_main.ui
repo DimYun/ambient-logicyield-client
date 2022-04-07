@@ -6,130 +6,75 @@
    <rect>
     <x>0</x>
     <y>0</y>
-    <width>562</width>
-    <height>761</height>
+    <width>780</width>
+    <height>892</height>
    </rect>
   </property>
   <property name="windowTitle">
    <string>MainWindow</string>
   </property>
   <widget class="QWidget" name="centralwidget">
-   <layout class="QVBoxLayout" name="verticalLayout">
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_3">
+   <layout class="QGridLayout" name="gridLayout">
+    <item row="0" column="0">
+     <widget class="QComboBox" name="cb_devices">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
       <item>
-       <widget class="QComboBox" name="cb_devices">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-        <item>
-         <property name="text">
-          <string>Select Connected Device</string>
-         </property>
-        </item>
-       </widget>
+       <property name="text">
+        <string>Select Connected Device</string>
+       </property>
       </item>
-      <item>
-       <widget class="QPushButton" name="pb_com_connect">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Connect Device</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+     </widget>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_4">
-      <item>
-       <widget class="QComboBox" name="cb_data">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-        <item>
-         <property name="text">
-          <string>Select Data</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Temperature</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Pressure</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>Humidity</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>CO2</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>PM2.5</string>
-         </property>
-        </item>
-        <item>
-         <property name="text">
-          <string>PM10</string>
-         </property>
-        </item>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="l_last_data">
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-        <property name="layoutDirection">
-         <enum>Qt::LeftToRight</enum>
-        </property>
-        <property name="text">
-         <string>Last Data</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-     </layout>
+    <item row="0" column="1">
+     <widget class="QPushButton" name="pushButton">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Refresh</string>
+      </property>
+     </widget>
     </item>
-    <item>
+    <item row="0" column="2">
+     <widget class="QPushButton" name="pb_com_connect">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Connect Device</string>
+      </property>
+     </widget>
+    </item>
+    <item row="1" column="0" colspan="3">
+     <widget class="QTableView" name="tableView"/>
+    </item>
+    <item row="2" column="0">
      <widget class="QLabel" name="l_date">
       <property name="font">
        <font>
@@ -137,65 +82,82 @@
        </font>
       </property>
       <property name="text">
-       <string>Select start and end time range to display:</string>
+       <string>Start Time</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
       </property>
      </widget>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout">
-      <item>
-       <widget class="QDateTimeEdit" name="dte_start_date">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QLabel" name="l_">
-        <property name="font">
-         <font>
-          <pointsize>21</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>-</string>
-        </property>
-        <property name="alignment">
-         <set>Qt::AlignCenter</set>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <widget class="QDateTimeEdit" name="dte_end_date">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-       </widget>
-      </item>
-     </layout>
+    <item row="2" column="1">
+     <widget class="QLabel" name="l_date_2">
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>End Time</string>
+      </property>
+      <property name="alignment">
+       <set>Qt::AlignCenter</set>
+      </property>
+     </widget>
     </item>
-    <item>
+    <item row="3" column="0">
+     <widget class="QDateTimeEdit" name="dte_start_date">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="1">
+     <widget class="QDateTimeEdit" name="dte_end_date">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+     </widget>
+    </item>
+    <item row="3" column="2">
+     <widget class="QCheckBox" name="checkBox">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Plot in Real Time</string>
+      </property>
+     </widget>
+    </item>
+    <item row="4" column="0" colspan="3">
      <widget class="QLabel" name="l_plot">
       <property name="minimumSize">
        <size>
-        <width>480</width>
-        <height>480</height>
+        <width>0</width>
+        <height>0</height>
        </size>
       </property>
       <property name="font">
@@ -211,60 +173,43 @@
       </property>
      </widget>
     </item>
-    <item>
-     <layout class="QHBoxLayout" name="horizontalLayout_2">
-      <item>
-       <widget class="QPushButton" name="pb_save_plot">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Save Image</string>
-        </property>
-       </widget>
-      </item>
-      <item>
-       <spacer name="horizontalSpacer">
-        <property name="orientation">
-         <enum>Qt::Horizontal</enum>
-        </property>
-        <property name="sizeHint" stdset="0">
-         <size>
-          <width>40</width>
-          <height>20</height>
-         </size>
-        </property>
-       </spacer>
-      </item>
-      <item>
-       <widget class="QPushButton" name="pb_save_data">
-        <property name="minimumSize">
-         <size>
-          <width>0</width>
-          <height>40</height>
-         </size>
-        </property>
-        <property name="font">
-         <font>
-          <pointsize>14</pointsize>
-         </font>
-        </property>
-        <property name="text">
-         <string>Save Data</string>
-        </property>
-       </widget>
-      </item>
-     </layout>
+    <item row="5" column="0">
+     <widget class="QPushButton" name="pb_save_plot">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Save Plot</string>
+      </property>
+     </widget>
     </item>
-    <item>
+    <item row="5" column="2">
+     <widget class="QPushButton" name="pb_save_data">
+      <property name="minimumSize">
+       <size>
+        <width>0</width>
+        <height>40</height>
+       </size>
+      </property>
+      <property name="font">
+       <font>
+        <pointsize>14</pointsize>
+       </font>
+      </property>
+      <property name="text">
+       <string>Save Plot to csv</string>
+      </property>
+     </widget>
+    </item>
+    <item row="6" column="0" colspan="3">
      <widget class="QPushButton" name="pb_to_cloud">
       <property name="minimumSize">
        <size>
@@ -289,7 +234,7 @@
     <rect>
      <x>0</x>
      <y>0</y>
-     <width>562</width>
+     <width>780</width>
      <height>21</height>
     </rect>
    </property>
