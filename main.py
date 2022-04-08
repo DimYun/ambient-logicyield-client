@@ -103,13 +103,25 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dte_end_date.setDisplayFormat("dd.MM.yyyy HH:mm")
 
         self.pb_plot_data.clicked.connect(self.plot_solid_data)
+        self.chb_real_time.stateChanged.connect(self.is_realtime_check)
 
         self.statusBar().showMessage("Dot Pulse ambient device No {}".format(self.device_num))
         self.initdb()
 
         shv.logger.info("Successfully init main class")
 
-    def update_plot(self):
+    def is_realtime_check(self):
+        if self.chb_real_time.isChecked():
+            self.dte_start_date.setEnabled(False)
+            self.dte_end_date.setEnabled(False)
+            self.pb_plot_data.setEnabled(False)
+            self.update_plot()
+        else:
+            self.dte_start_date.setEnabled(True)
+            self.dte_end_date.setEnabled(True)
+            self.pb_plot_data.setEnabled(True)
+
+    def update_plot(self, new_data=None):
         if self.all_data_x is None:
             return
         else:
@@ -118,16 +130,32 @@ class MainWindow(QtWidgets.QMainWindow):
                 if dtype not in self.tabs:
                     self.tabs[dtype] = []
                     self._plot_ref[dtype] = None
-                self.tabs[dtype].append(QtWidgets.QWidget())
-                self.tabw_data.addTab(self.tabs[dtype][0], dtype)
-                # Add matplotlib widgets for each tab
-                self.tabs[dtype].append(MplCanvas(self, width=10, height=10, dpi=150))
-                self.tabs[dtype].append(NavigationToolbar(self.tabs[dtype][1], self))
-                self.tabs[dtype].append(QtWidgets.QVBoxLayout())
-                self.tabs[dtype][3].addWidget(self.tabs[dtype][2])
-                self.tabs[dtype][3].addWidget(self.tabs[dtype][1])
-                self.tabs[dtype][0].setLayout(self.tabs[dtype][3])
+                    self.tabs[dtype].append(QtWidgets.QWidget())
+                    self.tabw_data.addTab(self.tabs[dtype][0], dtype)
+                    # Add matplotlib widgets for each tab
+                    self.tabs[dtype].append(MplCanvas(self, width=10, height=10, dpi=150))
+                    self.tabs[dtype].append(NavigationToolbar(self.tabs[dtype][1], self))
+                    self.tabs[dtype].append(QtWidgets.QVBoxLayout())
+                    self.tabs[dtype][3].addWidget(self.tabs[dtype][2])
+                    self.tabs[dtype][3].addWidget(self.tabs[dtype][1])
+                    self.tabs[dtype][0].setLayout(self.tabs[dtype][3])
 
+                if self._plot_ref[dtype] is None and self.chb_real_time.isChecked():
+                    data = self.get_db_data(dtype)
+                    self.all_data_y[dtype] = []
+                    self.all_data_x = list(range(50))
+                    for unixtime_value in data[-50:]:
+                        # self.all_data_x.append(unixtime_value[0])
+                        self.all_data_y[dtype].append(unixtime_value[1])
+                    while len(self.all_data_y[dtype]) < 50:
+                        self.all_data_y[dtype].insert(0, 0)
+
+                    plot_refs = self.tabs[dtype][1].axes.plot(
+                        self.all_data_x,
+                        self.all_data_y[dtype],
+                        'r'
+                    )
+                    self._plot_ref[dtype] = plot_refs[0]
                 # # Drop off the first y element, append a new one.
                 # self.all_data_y = self.all_data_y[1:] + [random.randint(0, 50)]
                 # self.all_data_x = self.all_data_x[1:] + [self.all_data_x[-1] + 1]
@@ -145,7 +173,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._plot_ref[dtype] = plot_refs[0]
                 else:
                     # We have a reference, we can use it to update the data for that line.
-                    self._plot_ref[dtype].set_xdata(self.all_data_x)
+                    for dtype in new_data:
+                        if dtype != 'unixtime':
+                            self.all_data_y[dtype] = self.all_data_y[dtype][1:] + new_data[dtype]
+                    # self._plot_ref[dtype].set_xdata(self.all_data_x)
                     self._plot_ref[dtype].set_ydata(self.all_data_y[dtype])
                 # Trigger the canvas to update and redraw.
                 self.tabs[dtype][1].draw()
@@ -249,12 +280,16 @@ class MainWindow(QtWidgets.QMainWindow):
             splitted = x.split(',')
             timestamp = list(map(int, splitted[0].split('_')))
             unixtime = int(time.mktime(datetime.datetime(*timestamp).timetuple()))
-            com_data_now = {}
+            com_data_now = {
+                'unixtime': unixtime
+            }
             for i in range(1, 5):
                 v_splitted = splitted[i].split('_')
                 v_type = v_splitted[0]
                 v_value = float(v_splitted[1])
                 com_data_now[v_type] = v_value
+
+            self.update_plot(new_data=com_data_now)
 
             # Get data form DB
             if self.all_data_x is None:
@@ -262,24 +297,14 @@ class MainWindow(QtWidgets.QMainWindow):
                 start_unixtime = start_td_value.toSecsSinceEpoch()
                 self.all_data_y = {}
                 for dtype in ['CO2', 'T', 'R']:
-                    cursor = self.db_conn.cursor()
-                    cursor.execute(
-                        """
-                        select unixtime, value from ambient_data where type = ? order by unixtime desc limit 10
-                        """,
-                        (dtype,)
-                    )
-                    data = list(
-                        reversed(
-                            [x for x in cursor.fetchall()]
-                        )
-                    )
+                    data = self.get_db_data(dtype)
                     self.all_data_y[dtype] = []
                     self.all_data_x = []
                     for unixtime_value in data:
                         if unixtime_value[0] >= start_unixtime:
                             self.all_data_x.append(unixtime_value[0])
                             self.all_data_y[dtype].append(unixtime_value[1])
+
         # # TODO: set correct DB selection and graphics plot
         # shv.logger.debug("Catch {} COM port signal".format(x))
         # cursor = self.db_conn.cursor()
@@ -289,6 +314,21 @@ class MainWindow(QtWidgets.QMainWindow):
         #             """, (dtype, ))
         # data = list(reversed([x for x in cursor.fetchall()]))
         # self.l_date.setText('_'.join([str(x) for x in data[-1]]))
+
+    def get_db_data(self, dtype):
+        cursor = self.db_conn.cursor()
+        cursor.execute(
+            """
+            select unixtime, value from ambient_data where type = ? order by unixtime desc limit 10
+            """,
+            (dtype,)
+        )
+        data = list(
+            reversed(
+                [x for x in cursor.fetchall()]
+            )
+        )
+        return data
 
     def plot_solid_data(self):
         # Get data form DB
@@ -317,9 +357,6 @@ class MainWindow(QtWidgets.QMainWindow):
                 if unixtime_value[0] >= start_unixtime and unixtime_value[0] <= end_unixtime:
                     self.all_data_x.append(unixtime_value[0])
                     self.all_data_y[dtype].append(unixtime_value[1])
-        print(self.all_data_y)
-        print()
-        print(self.all_data_x)
         self.update_plot()
 
     def generate_and_sent_signal(self):
