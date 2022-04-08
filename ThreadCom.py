@@ -22,7 +22,7 @@ class COMStartThread (QtCore.QThread):
         self.db_conn = None
 
     def run(self):
-        print('\t\tYes, Thread is started!')
+        shv.logger.info("Run thread for COM device")
         self.db_conn = sqlite3.connect(self.db_path)
         try:
             self.ser = serial.Serial(self.device_com)
@@ -31,38 +31,22 @@ class COMStartThread (QtCore.QThread):
             while self.is_start:
                 line = self.ser.readline().strip()
                 self.insert_data(line)
-                #
-                # if self.count_ard_reboot > 14400:
-                #     print('Start arduino reboot')
-                #     self.ser = None
-                #     self.ser = None
-                #     time.sleep(1)
-                #     self.ser = serial.Serial(self.device_com, 9600, timeout=5)
-                #     self.ser.flush()
-                #     self.count_ard_reboot = 0
-                # string_bytes = self.ser.readline()
-                # print('\t\t catched string: ', string_bytes)
-                # if string_bytes == '':
-                #     string_bytes = '0'
-                # if string_bytes:
-                #     self.my_signal.emit(string_bytes)  # QtCore.SIGNAL('DevStatusMessage(QString)')
-                # self.count_ard_reboot += 1
-                # time.sleep(1)
         except serial.SerialException as var:
-            print('Thread is stopped')
+            shv.logger.error("Serial Exception, thread is stopped: {}".format(var))
             self.is_start = False
             self.my_signal.emit('Serial is broken')
 
     def insert_data(self, line):
         """
-        Parse data and insert into db
+        Parse COM data and insert them into db
+        :param line: str, line with COM data
+        :return: None
         """
-        #TODO: split on 2 funct: split string (use tests) and insert
+        # TODO: split on 2 funct: split string (use tests) and insert
         splitted = line.decode('utf-8').split(',')
-        if len(splitted) != 6 or not splitted[0] == 'LY':  # .startswith('2022'):
-            # TODO: set flang for start of each line from arduino (first n bites)
+        if len(splitted) != 6 or not splitted[0] == 'LY':
             return  # partial data, skipping
-        print(line)
+        shv.logger.info("Get valid COM data: {}".format(line))
         splitted = splitted[1:]  # drop data start symbols
         timestamp = list(map(int, splitted[0].split('_')))
         unixtime = int(time.mktime(datetime.datetime(*timestamp).timetuple()))
@@ -72,7 +56,7 @@ class COMStartThread (QtCore.QThread):
             v_splitted = splitted[i].split('_')
             v_type = v_splitted[0]
             v_value = float(v_splitted[1])
-            print(v_type, v_value)
+            shv.logger.debug("Get type:value COM data: {}: {}".format(v_type, v_value))
             cursor.execute(
                 """
                 INSERT INTO ambient_data (
@@ -82,7 +66,8 @@ class COMStartThread (QtCore.QThread):
                 ) VALUES (?, ?, ?)
                 """, (unixtime, v_type, v_value))
         self.db_conn.commit()
-        self.SER_UPDATE_SIGNAL.emit('Data Ready')
+        self.SER_UPDATE_SIGNAL.emit(','.join(splitted))
 
     def quit(self):
+        shv.logger.info("Thread is stopped")
         self.is_start = False
