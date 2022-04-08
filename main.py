@@ -35,7 +35,6 @@ class MplCanvas(FigureCanvasQTAgg):
         super(MplCanvas, self).__init__(fig)
 
 
-
 class MainWindow(QtWidgets.QMainWindow):
     datetime_format = 'dd-MM-yyyy HH:mm:ss'
     device_num = 1
@@ -91,17 +90,15 @@ class MainWindow(QtWidgets.QMainWindow):
         self.timer.timeout.connect(self.generate_and_sent_signal)
         self.timer.start(5000)
 
-        sc = MplCanvas(self, width=5, height=4, dpi=150)
+        sc = MplCanvas(self, width=10, height=10, dpi=150)
         sc.axes.plot([0, 1, 2, 3, 4], [10, 1, 20, 3, 40])
 
         # Create toolbar, passing canvas as first parament, parent (self, the MainWindow) as second.
         toolbar = NavigationToolbar(sc, self)
-
-        self.gridLayout.removeWidget(self.l_plot)
-        self.l_plot.close()
-        self.l_plot = NavigationToolbar(sc, self)
-        self.gridLayout.addWidget(self.l_plot, 4, 0)
-        self.gridLayout.update()
+        self.all_d_tab_vl = QtWidgets.QVBoxLayout()
+        self.all_d_tab_vl.addWidget(toolbar)
+        self.all_d_tab_vl.addWidget(sc)
+        self.all_d_tab.setLayout(self.all_d_tab_vl)
 
         self.statusBar().showMessage("Dot Pulse ambient device No {}".format(self.device_num))
         shv.logger.info("Successfully init main class")

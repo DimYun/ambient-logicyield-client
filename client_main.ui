@@ -153,24 +153,21 @@
      </widget>
     </item>
     <item row="4" column="0" colspan="3">
-     <widget class="QLabel" name="l_plot">
+     <widget class="QTabWidget" name="tabw_data">
       <property name="minimumSize">
        <size>
         <width>0</width>
-        <height>0</height>
+        <height>400</height>
        </size>
       </property>
-      <property name="font">
-       <font>
-        <pointsize>14</pointsize>
-       </font>
+      <property name="currentIndex">
+       <number>0</number>
       </property>
-      <property name="text">
-       <string>Plot Data</string>
-      </property>
-      <property name="alignment">
-       <set>Qt::AlignCenter</set>
-      </property>
+      <widget class="QWidget" name="all_d_tab">
+       <attribute name="title">
+        <string>All Data</string>
+       </attribute>
+      </widget>
      </widget>
     </item>
     <item row="5" column="0">
