@@ -43,7 +43,11 @@ class COMStartThread (QtCore.QThread):
         :return: None
         """
         # TODO: split on 2 funct: split string (use tests) and insert
-        splitted = line.decode('utf-8').split(',')
+        try:
+            splitted = line.decode('utf-8').split(',')
+        except UnicodeDecodeError as e:
+            shv.logger.warning("UnicodeDecodeError {}".format(e))
+            return
         if len(splitted) != 6 or not splitted[0] == 'LY':
             return  # partial data, skipping
         shv.logger.info("Get valid COM data: {}".format(line))
@@ -66,6 +70,7 @@ class COMStartThread (QtCore.QThread):
                 ) VALUES (?, ?, ?)
                 """, (unixtime, v_type, v_value))
         self.db_conn.commit()
+        shv.logger.info("Write data, sent signal".format(line))
         self.SER_UPDATE_SIGNAL.emit(','.join(splitted))
 
     def quit(self):

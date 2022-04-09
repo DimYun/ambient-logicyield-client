@@ -82,7 +82,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.tray_icon.setContextMenu(tray_menu)
         self.tray_icon.show()
 
-        self.pb_to_cloud.clicked.connect(self.start_com)
+        self.pb_com_connect.clicked.connect(self.start_com)
         #
         # self.pb_exit.clicked.connect(self.hide_it)
         # self.pb_save.clicked.connect(self.save_data)
@@ -126,7 +126,7 @@ class MainWindow(QtWidgets.QMainWindow):
             return
         else:
             # Create infrastructure
-            for dtype in ['CO2', 'T', 'R']:
+            for dtype in ['CO2', 'T', 'R', 'P']:
                 if dtype not in self.tabs:
                     self.tabs[dtype] = []
                     self._plot_ref[dtype] = None
@@ -141,12 +141,13 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.tabs[dtype][0].setLayout(self.tabs[dtype][3])
 
                 if self._plot_ref[dtype] is None and self.chb_real_time.isChecked():
+                    # When start real time data plot
                     data = self.get_db_data(dtype)
                     self.all_data_y[dtype] = []
                     self.all_data_x = list(range(50))
-                    for unixtime_value in data[-50:]:
-                        # self.all_data_x.append(unixtime_value[0])
-                        self.all_data_y[dtype].append(unixtime_value[1])
+                    for unixtime_and_value in data[-50:]:
+                        # self.all_data_x.append(unixtime_and_value[0])
+                        self.all_data_y[dtype].append(unixtime_and_value[1])
                     while len(self.all_data_y[dtype]) < 50:
                         self.all_data_y[dtype].insert(0, 0)
 
@@ -156,12 +157,13 @@ class MainWindow(QtWidgets.QMainWindow):
                         'r'
                     )
                     self._plot_ref[dtype] = plot_refs[0]
+                    # self.tabs[dtype][1].draw()
                 # # Drop off the first y element, append a new one.
                 # self.all_data_y = self.all_data_y[1:] + [random.randint(0, 50)]
                 # self.all_data_x = self.all_data_x[1:] + [self.all_data_x[-1] + 1]
 
                 # Note: we no longer need to clear the axis.
-                if self._plot_ref[dtype] is None:
+                elif self._plot_ref[dtype] is None and not self.chb_real_time.isChecked():
                     # First time we have no plot reference, so do a normal plot.
                     # .plot returns a list of line <reference>s, as we're
                     # only getting one we can take the first element.
@@ -173,12 +175,10 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._plot_ref[dtype] = plot_refs[0]
                 else:
                     # We have a reference, we can use it to update the data for that line.
-                    for dtype in new_data:
-                        if dtype != 'unixtime':
-                            self.all_data_y[dtype] = self.all_data_y[dtype][1:] + new_data[dtype]
+                    self.all_data_y[dtype] = self.all_data_y[dtype][1:] + [new_data[dtype]]
                     # self._plot_ref[dtype].set_xdata(self.all_data_x)
                     self._plot_ref[dtype].set_ydata(self.all_data_y[dtype])
-                # Trigger the canvas to update and redraw.
+                    # Trigger the canvas to update and redraw.
                 self.tabs[dtype][1].draw()
 
     def init_logger(self):
@@ -296,7 +296,7 @@ class MainWindow(QtWidgets.QMainWindow):
                 start_td_value = self.dte_start_date.dateTime()  # getting current datetime in QDatetime
                 start_unixtime = start_td_value.toSecsSinceEpoch()
                 self.all_data_y = {}
-                for dtype in ['CO2', 'T', 'R']:
+                for dtype in ['CO2', 'T', 'R', 'P']:
                     data = self.get_db_data(dtype)
                     self.all_data_y[dtype] = []
                     self.all_data_x = []
