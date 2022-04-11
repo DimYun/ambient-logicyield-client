@@ -30,11 +30,42 @@ __author__ = 'Yunovidov Dmitriy: Dm.Yunovidov@gmail.com'
 
 
 class MplCanvas(FigureCanvasQTAgg):
-
+    """
+    Class for matplotlib canvas
+    """
     def __init__(self, parent=None, width=5, height=4, dpi=150):
         fig = Figure(figsize=(width, height), dpi=dpi)
         self.axes = fig.add_subplot(111)
         super(MplCanvas, self).__init__(fig)
+
+
+def init_logger():
+    """
+    Initiate logging
+    :return: None
+    """
+    shv.logger = logging.getLogger('main_logger')
+    shv.logger.setLevel(logging.DEBUG)
+    # create file handler which logs even debug messages
+    fh = logging.FileHandler('main-log.log', 'w')
+    fh.setLevel(logging.DEBUG)
+    # create console handler with a higher log level
+    ch = logging.StreamHandler()
+    ch.setLevel(logging.INFO)
+    # create class handler with a higher log level for user messages
+    clh = logging.StreamHandler(dp.InfoWindow())
+    clh.setLevel(logging.WARNING)
+    # create formatter and add it to the handlers
+    formatter = logging.Formatter(
+        '%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s'
+    )
+    ch.setFormatter(formatter)
+    fh.setFormatter(formatter)
+    clh.setFormatter(formatter)
+    # add the handlers to logger
+    shv.logger.addHandler(clh)
+    shv.logger.addHandler(ch)
+    shv.logger.addHandler(fh)
 
 
 class MainWindow(QtWidgets.QMainWindow):
@@ -51,7 +82,7 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def __init__(self):
         super(QtWidgets.QMainWindow, self).__init__()
-        self.init_logger()  # init logging
+        init_logger()  # init logging
         uic.loadUi("client_main.ui", self)
 
         self.setWindowTitle("Client Ambient Data")
@@ -94,7 +125,7 @@ class MainWindow(QtWidgets.QMainWindow):
         # Configure statusbar
         # Setup timer for ambient data TODO: May slow down interface
         self.timer = QtCore.QTimer()
-        self.timer.timeout.connect(self.generate_and_sent_signal)
+        self.timer.timeout.connect(self.update_statusbar)
         # self.timer.timeout.connect(self.update_plot)
         self.timer.start(5000)
 
@@ -180,34 +211,6 @@ class MainWindow(QtWidgets.QMainWindow):
                     self._plot_ref[dtype].set_ydata(self.all_data_y[dtype])
                     # Trigger the canvas to update and redraw.
                 self.tabs[dtype][1].draw()
-
-    def init_logger(self):
-        """
-        Initiate logging
-        :return: None
-        """
-        shv.logger = logging.getLogger('main_logger')
-        shv.logger.setLevel(logging.DEBUG)
-        # create file handler which logs even debug messages
-        fh = logging.FileHandler('main-log.log', 'w')
-        fh.setLevel(logging.DEBUG)
-        # create console handler with a higher log level
-        ch = logging.StreamHandler()
-        ch.setLevel(logging.INFO)
-        # create class handler with a higher log level for user messages
-        clh = logging.StreamHandler(dp.InfoWindow())
-        clh.setLevel(logging.WARNING)
-        # create formatter and add it to the handlers
-        formatter = logging.Formatter(
-            '%(levelname)s, %(asctime)s, (%(module)s - %(funcName)s - %(lineno)d), %(message)s'
-        )
-        ch.setFormatter(formatter)
-        fh.setFormatter(formatter)
-        clh.setFormatter(formatter)
-        # add the handlers to logger
-        shv.logger.addHandler(clh)
-        shv.logger.addHandler(ch)
-        shv.logger.addHandler(fh)
 
     def initdb(self):
         """
@@ -338,7 +341,7 @@ class MainWindow(QtWidgets.QMainWindow):
         end_td_value = self.dte_end_date.dateTime()  # getting current datetime in QDatetime
         end_unixtime = end_td_value.toSecsSinceEpoch()
         self.all_data_y = {}
-        for dtype in ['CO2', 'T', 'R']:
+        for dtype in ['CO2', 'T', 'R', 'P']:
             cursor = self.db_conn.cursor()
             cursor.execute(
                 """
@@ -359,7 +362,7 @@ class MainWindow(QtWidgets.QMainWindow):
                     self.all_data_y[dtype].append(unixtime_value[1])
         self.update_plot()
 
-    def generate_and_sent_signal(self):
+    def update_statusbar(self):
         """
         Generate OS resourses data and print it on statusBar each second
         :return: None
@@ -406,26 +409,6 @@ class MainWindow(QtWidgets.QMainWindow):
         else:
             return None
 
-    def open_file_name_dialog(self):
-        """
-        Call file open dialog
-        :return: file name or None
-        """
-        options = QtWidgets.QFileDialog.Options()
-        options |= QtWidgets.QFileDialog.DontUseNativeDialog
-        file_name, _ = QtWidgets.QFileDialog.getOpenFileName(
-            self,
-            "QFileDialog.getOpenFileName()",
-            "",
-            "All Files (*);;CSV Files (*.csv)",
-            options=options
-        )
-        if file_name:
-            print(file_name)
-            return file_name
-        else:
-            return None
-
     def closeEvent(self, event):
         self.save_dialog()
         # self.timer.stop()
@@ -451,6 +434,7 @@ class MainWindow(QtWidgets.QMainWindow):
 if __name__ == "__main__":
     import sys
 
+    init_logger()
     app = QtWidgets.QApplication(sys.argv)
     # app.setStyle("Fusion")
     main_window = MainWindow()
