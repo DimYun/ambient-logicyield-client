@@ -21,6 +21,7 @@ import datetime
 import DataProcess as dp
 import SharedVars as shv
 import ThreadCom
+import ThreadSend
 
 """This module provides main structure and function of client program for get ambient data from PCB device"""
 # Plots: https://www.pythonguis.com/tutorials/plotting-matplotlib/
@@ -217,13 +218,31 @@ class MainWindow(QtWidgets.QMainWindow):
         Create necessary tables
         """
         shv.logger.debug("Init {} database and {} table in it".format(self.db_path, 'ambient_data'))
-        self.db_conn = sqlite3.connect(self.db_path)
+        self.db_conn = sqlite3.connect(self.db_path, check_same_thread=False)
         cursor = self.db_conn.cursor()
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS ambient_data (
                 unixtime integer,
                 type text,
                 value real
+            )
+            """)
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_ambient_data on ambient_data (
+                type,
+                unixtime
+            )
+            """)
+        # DB for last send status
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS send_status (
+                unixtime integer,
+                type text
+            )
+            """)
+        cursor.execute("""
+            CREATE UNIQUE INDEX IF NOT EXISTS uk_send_status on send_status (
+                type
             )
             """)
         self.db_conn.commit()
@@ -238,6 +257,9 @@ class MainWindow(QtWidgets.QMainWindow):
         self.thread = ThreadCom.COMStartThread(device_com=self.device_com, db_path=self.db_path)
         self.thread.SER_UPDATE_SIGNAL.connect(lambda x: self.com_data(x))  # connect signal from thread
         self.thread.start()
+
+        self.send_thread = ThreadSend.SendThread(db_path=self.db_path)
+        self.send_thread.start()
 
     def refresh(self):
         """
@@ -322,8 +344,8 @@ class MainWindow(QtWidgets.QMainWindow):
         cursor = self.db_conn.cursor()
         cursor.execute(
             """
-            select unixtime, value from ambient_data where type = ? order by unixtime desc limit 10
-            """,
+            select unixtime, value from ambient_data where type = ? order by unixtime desc limit 100
+            """,  # limit 10
             (dtype,)
         )
         data = list(

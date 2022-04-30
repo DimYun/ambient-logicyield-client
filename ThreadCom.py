@@ -23,7 +23,7 @@ class COMStartThread (QtCore.QThread):
 
     def run(self):
         shv.logger.info("Run thread for COM device")
-        self.db_conn = sqlite3.connect(self.db_path)
+        self.db_conn = sqlite3.connect(self.db_path, check_same_thread=False)
         try:
             self.ser = serial.Serial(self.device_com)
             self.ser.flushInput()
