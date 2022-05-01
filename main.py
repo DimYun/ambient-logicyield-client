@@ -77,16 +77,24 @@ class MainWindow(QtWidgets.QMainWindow):
     db_path = 'test.db'
     thread = None  # COM data thread instance
     send_thread = None  # Send data to server thread
-    all_data_x = None  # list(range(50))
-    all_data_y = None  # [random.randint(0, 10) for i in range(50)]
     tabs = {}  # tab structure for each data type {sens_dtype: [widget, canvas, toolbar, layout]}
-    _plot_ref = {}  # plot structure for realtime plot updates {sens_dtype: [widget, canvas, toolbar, layout]}
+    _plot_ref = {
+        'realtime_plot': {},
+        'datetime_plot': {}
+    }  # plot structure for realtime plot updates {sens_dtype: [widget, canvas, toolbar, layout]}
+    all_data_x = {
+        'realtime_plot': {},
+        'datetime_plot': {}
+    }
+    all_data_y = {
+        'realtime_plot': {},
+        'datetime_plot': {}
+    }
     all_dtype = ['CO2', 'T', 'R', 'P']
     visible_data_len = 50
 
     def __init__(self):
         super(QtWidgets.QMainWindow, self).__init__()
-        init_logger()  # init logging
         uic.loadUi("client_main.ui", self)
 
         self.setWindowTitle("Client Ambient Data")
@@ -137,7 +145,7 @@ class MainWindow(QtWidgets.QMainWindow):
         self.dte_start_date.setDisplayFormat("dd.MM.yyyy HH:mm")
         self.dte_end_date.setDisplayFormat("dd.MM.yyyy HH:mm")
 
-        self.pb_plot_data.clicked.connect(self.plot_solid_data)
+        self.pb_plot_data.clicked.connect(self.update_plot)
         self.chb_real_time.stateChanged.connect(self.is_realtime_check)
 
         self.pb_to_cloud.clicked.connect(self.load_to_cloud)
@@ -188,69 +196,102 @@ class MainWindow(QtWidgets.QMainWindow):
         :param new_data: dict, new data unit from sensors
         :return:
         """
-        if self.all_data_x is None:  # if there is no data from sensors
-            return
-        else:
-            for sens_dtype in self.all_dtype:  # take each data type from sensors: CO2, T, P, R
-                if sens_dtype not in self.tabs:  # for initial start, when none of tab created
-                    self.tabs[sens_dtype] = []
-                    self._plot_ref[sens_dtype] = None
-                    self.tabs[sens_dtype].append(QtWidgets.QWidget())  # set widget for new tab
-                    self.tabw_data.addTab(self.tabs[sens_dtype][0], sens_dtype)  # set widget as new tab in QTabWidget
-                    # Add matplotlib widgets for widget in tab in QTabWidget
-                    self.tabs[sens_dtype].append(MplCanvas(self, width=10, height=10, dpi=150))
-                    self.tabs[sens_dtype].append(NavigationToolbar(self.tabs[sens_dtype][1], self))
-                    self.tabs[sens_dtype].append(QtWidgets.QVBoxLayout())  # add layout and fill it with widgets
-                    self.tabs[sens_dtype][3].addWidget(self.tabs[sens_dtype][2])
-                    self.tabs[sens_dtype][3].addWidget(self.tabs[sens_dtype][1])
-                    self.tabs[sens_dtype][0].setLayout(self.tabs[sens_dtype][3])
+        for sens_dtype in self.all_dtype:  # take each data type from sensors: CO2, T, P, R
+            if sens_dtype not in self.tabs:  # for initial start, when none of tab created
+                shv.logger.debug("\tcreate tab infrastructure")
+                self.tabs[sens_dtype] = []
+                self._plot_ref[sens_dtype] = None
+                self.tabs[sens_dtype].append(QtWidgets.QWidget())  # set widget for new tab
+                self.tabw_data.addTab(self.tabs[sens_dtype][0], sens_dtype)  # set widget as new tab in QTabWidget
+                # Add matplotlib widgets for widget in tab in QTabWidget
+                self.tabs[sens_dtype].append(MplCanvas(self, width=10, height=10, dpi=150))
+                self.tabs[sens_dtype].append(NavigationToolbar(self.tabs[sens_dtype][1], self))
+                self.tabs[sens_dtype].append(QtWidgets.QVBoxLayout())  # add layout and fill it with widgets
+                self.tabs[sens_dtype][3].addWidget(self.tabs[sens_dtype][2])
+                self.tabs[sens_dtype][3].addWidget(self.tabs[sens_dtype][1])
+                self.tabs[sens_dtype][0].setLayout(self.tabs[sens_dtype][3])
+                for k in self.all_data_x:
+                    self.all_data_x[k][sens_dtype] = None
+                    self.all_data_y[k][sens_dtype] = None
+                    self._plot_ref[k][sens_dtype] = None
 
-                if self._plot_ref[sens_dtype] is None and self.chb_real_time.isChecked():
-                    # For initial realtime plot, after tab structure is creates
-                    data = self.get_db_data(sens_dtype, limit=100)  # get DB data for sensor
-                    self.all_data_y[sens_dtype] = []
-                    self.all_data_x = list(range(self.visible_data_len))  # set number of visible values of unixtime
-                    for unixtime_and_value in data[-self.visible_data_len:]:
-                        # self.all_data_x.append(unixtime_and_value[0])
-                        self.all_data_y[sens_dtype].append(unixtime_and_value[1])
-                    while len(self.all_data_y[sens_dtype]) < self.visible_data_len:
-                        self.all_data_y[sens_dtype].insert(0, 0)
-
+            if self._plot_ref['realtime_plot'][sens_dtype] is None and self.chb_real_time.isChecked():
+                # For initial realtime plot, after tab structure is creates
+                shv.logger.debug("\tset initial realtime plot for {}".format(sens_dtype))
+                data = self.get_db_data(sens_dtype, limit=self.visible_data_len)  # get DB data for sensor
+                if not data:
+                    shv.logger.warning("There is no data on DB")
+                    return
+                self.all_data_x['realtime_plot'][sens_dtype] = list(range(self.visible_data_len))  # set number of visible values of unixtime
+                self.all_data_y['realtime_plot'][sens_dtype] = []
+                for unixtime_and_value in data:
+                    self.all_data_y['realtime_plot'][sens_dtype].append(unixtime_and_value[1])  # add value
+                while len(self.all_data_y['realtime_plot'][sens_dtype]) < self.visible_data_len:  # add 0 data to fulfill set len
+                    self.all_data_y['realtime_plot'][sens_dtype].insert(0, 0)
+                self.tabs[sens_dtype][1].axes.clear()  # clear of previose plot
+                plot_refs = self.tabs[sens_dtype][1].axes.plot(
+                    self.all_data_x['realtime_plot'][sens_dtype],
+                    self.all_data_y['realtime_plot'][sens_dtype],
+                    'r'
+                )  # plot data on axes in tab
+                self._plot_ref['realtime_plot'][sens_dtype] = plot_refs[0]  # save plot for further update
+            elif self._plot_ref['realtime_plot'][sens_dtype] is not None and self.chb_real_time.isChecked():
+                # Update data on realtime plot
+                shv.logger.debug("\tupdate realtime plot for {}".format(sens_dtype))
+                if new_data is None:  # initialize data before but no COM connection
+                    self.tabs[sens_dtype][1].axes.clear()  # clear of previose plot
                     plot_refs = self.tabs[sens_dtype][1].axes.plot(
-                        self.all_data_x,
-                        self.all_data_y[sens_dtype],
+                        self.all_data_x['realtime_plot'][sens_dtype],
+                        self.all_data_y['realtime_plot'][sens_dtype],
                         'r'
-                    )
-                    self._plot_ref[sens_dtype] = plot_refs[0]
-                    # self.tabs[sens_dtype][1].draw()
-                # # Drop off the first y element, append a new one.
-                # self.all_data_y = self.all_data_y[1:] + [random.randint(0, 50)]
-                # self.all_data_x = self.all_data_x[1:] + [self.all_data_x[-1] + 1]
-
-                # Note: we no longer need to clear the axis.
-                elif self._plot_ref[sens_dtype] is None and not self.chb_real_time.isChecked():
-                    # First time we have no plot reference, so do a normal plot.
-                    # .plot returns a list of line <reference>s, as we're
-                    # only getting one we can take the first element.
-                    plot_refs = self.tabs[sens_dtype][1].axes.plot(
-                        self.all_data_x,
-                        self.all_data_y[sens_dtype],
-                        'r'
-                    )
-                    self._plot_ref[sens_dtype] = plot_refs[0]
+                    )  # plot data on axes in tab
+                    self._plot_ref['realtime_plot'][sens_dtype] = plot_refs[0]
                 else:
-                    # We have a reference, we can use it to update the data for that line.
-                    self.all_data_y[sens_dtype] = self.all_data_y[sens_dtype][1:] + [new_data[sens_dtype]]
-                    # self._plot_ref[sens_dtype].set_xdata(self.all_data_x)
-                    self._plot_ref[sens_dtype].set_ydata(self.all_data_y[sens_dtype])
-                    # Trigger the canvas to update and redraw.
-                self.tabs[sens_dtype][1].draw()
+                    self.all_data_y[
+                        'realtime_plot'
+                    ][sens_dtype] = self.all_data_y[
+                                            'realtime_plot'
+                                    ][sens_dtype][1:] + [new_data[sens_dtype]]
+                    self._plot_ref['realtime_plot'][sens_dtype].set_ydata(
+                        self.all_data_y['realtime_plot'][sens_dtype]
+                    )
+            else:
+                # Plot datetime_plot
+                shv.logger.debug("\tset initial non realtime plot for {}".format(sens_dtype))
+                unixtime_start = self.dte_start_date.dateTime().toSecsSinceEpoch()
+                unixtime_stop = self.dte_end_date.dateTime().toSecsSinceEpoch()
+                shv.logger.debug("\tunixtime start: {} and end: {}".format(
+                    unixtime_start, unixtime_stop
+                ))
+                # TODO: get data from DB based on unixtime values
+                data = self.get_db_data(
+                    sens_dtype, limit=10000
+                )  # get DB data for sensor
+                if not data:
+                    shv.logger.warning("There is no data on DB")
+                    return
+                valid_data = [x for x in data if unixtime_start < x[0] < unixtime_stop]
+                self.all_data_x['datetime_plot'][sens_dtype] = []
+                self.all_data_y['datetime_plot'][sens_dtype] = []
+                for unixtime_and_value in valid_data:
+                    self.all_data_x['datetime_plot'][sens_dtype].append(unixtime_and_value[0])
+                    self.all_data_y['datetime_plot'][sens_dtype].append(unixtime_and_value[1])
+                self.tabs[sens_dtype][1].axes.clear()  # clear of previose plot
+                plot_refs = self.tabs[sens_dtype][1].axes.plot(
+                    self.all_data_x['datetime_plot'][sens_dtype],
+                    self.all_data_y['datetime_plot'][sens_dtype],
+                    'r'
+                )
+                self._plot_ref['datetime_plot'][sens_dtype] = plot_refs[0]
+            self.tabs[sens_dtype][1].draw()  # trigger the canvas to update and redraw.
 
     def initdb(self):
         """
-        Create necessary tables
+        Initiate database and create tables and indexes
         """
-        shv.logger.debug("Init {} database and {} table in it".format(self.db_path, 'ambient_data'))
+        shv.logger.info(
+            "Init {} database and {} table in it".format(self.db_path, 'ambient_data')
+        )
         self.db_conn = sqlite3.connect(self.db_path, check_same_thread=False)
         cursor = self.db_conn.cursor()
         cursor.execute("""
@@ -282,14 +323,29 @@ class MainWindow(QtWidgets.QMainWindow):
 
     def start_com(self):
         """
-        Start COM port data get tread
+        Start tread for getting ambient data from COM device
         :return:
         """
-        shv.logger.debug("Init {} COM port connection and data thread".format(self.device_com))
-        self.device_com = self.cb_devices.currentText()
-        self.thread = ThreadCom.COMStartThread(device_com=self.device_com, db_path=self.db_path)
-        self.thread.SER_UPDATE_SIGNAL.connect(lambda x: self.com_data(x))  # connect signal from thread
-        self.thread.start()
+        if self.pb_com_connect.text() == 'Connect Device':
+            shv.logger.debug(
+                "\tinit {} COM port connection and data thread".format(self.device_com)
+            )
+            self.device_com = self.cb_devices.currentText()
+            self.thread = ThreadCom.COMStartThread(
+                device_com=self.device_com,
+                db_path=self.db_path
+            )
+            self.thread.SER_UPDATE_SIGNAL.connect(
+                lambda x: self.com_data(x)
+            )  # connect signal from thread
+            self.thread.start()
+            self.pb_com_connect.setText('Stop Connection')
+        else:
+            shv.logger.debug(
+                "\tstop {} COM port connection and data thread".format(self.device_com)
+            )
+            self.thread.quit()
+            self.pb_com_connect.setText('Connect Device')
 
     def refresh(self):
         """
@@ -324,15 +380,18 @@ class MainWindow(QtWidgets.QMainWindow):
                 all_ports.append(i)
             return all_ports
 
-    def com_data(self, x):
+    def com_data(self, com_data):
         """
-        Function for serial thread signal. Catch data from COM port and process it
-        :param x: str, data line form COM port monitor thread
+        Function for process COM data thread signal
+        :param com_data: str, data line form thread for ambient data COM device
         :return: None
         """
-        # TODO: insert new data in tv, plot realtime data if set checkbox and start date
+        # TODO: insert new data in tv
         if self.chb_real_time.isChecked():  # plot data in real time
-            splitted = x.split(',')
+            shv.logger.debug(
+                "\tget COM data: {}".format(com_data)
+            )
+            splitted = com_data.split(',')
             timestamp = list(map(int, splitted[0].split('_')))
             unixtime = int(time.mktime(datetime.datetime(*timestamp).timetuple()))
             com_data_now = {
@@ -343,38 +402,13 @@ class MainWindow(QtWidgets.QMainWindow):
                 v_type = v_splitted[0]
                 v_value = float(v_splitted[1])
                 com_data_now[v_type] = v_value
-
             self.update_plot(new_data=com_data_now)
-
-            # Get data form DB
-            if self.all_data_x is None:
-                start_td_value = self.dte_start_date.dateTime()  # getting current datetime in QDatetime
-                start_unixtime = start_td_value.toSecsSinceEpoch()
-                self.all_data_y = {}
-                for dtype in ['CO2', 'T', 'R', 'P']:
-                    data = self.get_db_data(dtype, test)
-                    self.all_data_y[dtype] = []
-                    self.all_data_x = []
-                    for unixtime_value in data:
-                        if unixtime_value[0] >= start_unixtime:
-                            self.all_data_x.append(unixtime_value[0])
-                            self.all_data_y[dtype].append(unixtime_value[1])
-
-        # # TODO: set correct DB selection and graphics plot
-        # shv.logger.debug("Catch {} COM port signal".format(x))
-        # cursor = self.db_conn.cursor()
-        # sens_dtype = 'CO2'
-        # cursor.execute("""
-        #             select unixtime, value from ambient_data where type = ? order by unixtime desc limit 10
-        #             """, (sens_dtype, ))
-        # data = list(reversed([x for x in cursor.fetchall()]))
-        # self.l_date.setText('_'.join([str(x) for x in data[-1]]))
 
     def get_db_data(self, sens_dtype, limit=100):
         """
         Get some data from DB with setting limits
         :param sens_dtype: str, identifier for type of sensor data (CO2, T, R, P)
-        :param limit: int, limit value for get last data from DB, default is 100
+        :param limit: int, limit value for get last data from DB
         :return: list, structure of tuples with values of unixtime and float value [(unixtime, value), ...]
         """
         cursor = self.db_conn.cursor()
@@ -391,38 +425,9 @@ class MainWindow(QtWidgets.QMainWindow):
         )  # crate list with tuples, newest come first
         return data
 
-    def plot_solid_data(self):
-        # Get data form DB
-        start_td_value = self.dte_start_date.dateTime()  # getting current datetime in QDatetime
-        start_unixtime = start_td_value.toSecsSinceEpoch()
-
-        end_td_value = self.dte_end_date.dateTime()  # getting current datetime in QDatetime
-        end_unixtime = end_td_value.toSecsSinceEpoch()
-        self.all_data_y = {}
-        for dtype in ['CO2', 'T', 'R', 'P']:
-            cursor = self.db_conn.cursor()
-            cursor.execute(
-                """
-                select unixtime, value from ambient_data where type = ? order by unixtime desc limit 10
-                """,
-                (dtype,)
-            )
-            data = list(
-                reversed(
-                    [x for x in cursor.fetchall()]
-                )
-            )
-            self.all_data_y[dtype] = []
-            self.all_data_x = []
-            for unixtime_value in data:
-                if unixtime_value[0] >= start_unixtime and unixtime_value[0] <= end_unixtime:
-                    self.all_data_x.append(unixtime_value[0])
-                    self.all_data_y[dtype].append(unixtime_value[1])
-        self.update_plot()
-
     def update_statusbar(self):
         """
-        Generate OS resourses data and print it on statusBar each second
+        Generate OS resources data and print it on statusBar each second
         :return: None
         """
         self.statusBar().showMessage(

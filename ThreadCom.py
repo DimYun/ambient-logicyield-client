@@ -60,7 +60,7 @@ class COMStartThread (QtCore.QThread):
             v_splitted = splitted[i].split('_')
             v_type = v_splitted[0]
             v_value = float(v_splitted[1])
-            shv.logger.debug("Get type:value COM data: {}: {}".format(v_type, v_value))
+            shv.logger.debug("\tget type:value COM data: {}: {}".format(v_type, v_value))
             cursor.execute(
                 """
                 INSERT INTO ambient_data (
@@ -70,7 +70,7 @@ class COMStartThread (QtCore.QThread):
                 ) VALUES (?, ?, ?)
                 """, (unixtime, v_type, v_value))
         self.db_conn.commit()
-        shv.logger.info("Write data, sent signal".format(line))
+        shv.logger.info("Write data, sent signal {}".format(line))
         self.SER_UPDATE_SIGNAL.emit(','.join(splitted))
 
     def quit(self):
