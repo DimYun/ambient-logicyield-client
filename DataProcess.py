@@ -54,7 +54,7 @@ def set_table_data(
             )
         )
         data_line.append(data_to_table[data_type])
-    shv.all_table_data.insert(0, data_to_table[data_line])
+    shv.all_table_data.insert(0, data_line)
 
     shv.logger.debug('\t set new table for QWidget')
     tv_model = TableImplementation.MyTableModel(
