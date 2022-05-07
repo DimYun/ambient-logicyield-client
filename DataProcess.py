@@ -1,4 +1,6 @@
 from PyQt5 import QtGui, QtCore, QtWidgets
+import TableImplementation
+import SharedVars as shv
 
 
 class InfoWindow:
@@ -27,3 +29,37 @@ class InfoWindow:
                 logtext
             )
         )
+
+
+def set_table_data(
+        data_to_table,
+        tv_data_widget,
+        time_stamp
+):
+    """
+    Process and display data in QTableView widget
+    :param data_to_table: list, data lists for each iteration
+    :param tv_data_widget: PyQt5.Widgets.QTableView, main table for display COM data
+    :param time_stamp: str, time
+    :return: int, if process without errors, None otherwise
+    """
+    shv.logger.debug('\t gat data to table: {}'.format(data_to_table))
+    shv.all_headers[1].insert(0, time_stamp)
+    data_line = []
+    for data_type in data_to_table:
+        shv.all_headers[0].append(
+            '{} {}'.format(
+                data_type,
+                shv.all_units[data_type]
+            )
+        )
+        data_line.append(data_to_table[data_type])
+    shv.all_table_data.insert(0, data_to_table[data_line])
+
+    shv.logger.debug('\t set new table for QWidget')
+    tv_model = TableImplementation.MyTableModel(
+        shv.all_table_data,
+        shv.all_headers
+    )
+    tv_data_widget.setModel(tv_model)
+    return 1

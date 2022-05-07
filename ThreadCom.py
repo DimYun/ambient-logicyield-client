@@ -71,6 +71,7 @@ class COMStartThread (QtCore.QThread):
                 """, (unixtime, v_type, v_value))
         self.db_conn.commit()
         shv.logger.info("Write data, sent signal {}".format(line))
+        # Sent signal 2022_5_7_13_51_31,T_27.61_C,R_27_%,P_754_mm,CO2_408_ppm
         self.SER_UPDATE_SIGNAL.emit(','.join(splitted))
 
     def quit(self):

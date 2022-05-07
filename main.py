@@ -52,7 +52,7 @@ def init_logger():
     fh.setLevel(logging.DEBUG)
     # create console handler with a higher log level
     ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
+    ch.setLevel(logging.DEBUG)
     # create class handler with a higher log level for user messages
     clh = logging.StreamHandler(dp.InfoWindow())
     clh.setLevel(logging.WARNING)
@@ -90,7 +90,6 @@ class MainWindow(QtWidgets.QMainWindow):
         'realtime_plot': {},
         'datetime_plot': {}
     }
-    all_dtype = ['CO2', 'T', 'R', 'P']
     visible_data_len = 50
 
     def __init__(self):
@@ -196,7 +195,7 @@ class MainWindow(QtWidgets.QMainWindow):
         :param new_data: dict, new data unit from sensors
         :return:
         """
-        for sens_dtype in self.all_dtype:  # take each data type from sensors: CO2, T, P, R
+        for sens_dtype in shv.all_dtype:  # take each data type from sensors: CO2, T, P, R
             if sens_dtype not in self.tabs:  # for initial start, when none of tab created
                 shv.logger.debug("\tcreate tab infrastructure")
                 self.tabs[sens_dtype] = []
@@ -327,10 +326,11 @@ class MainWindow(QtWidgets.QMainWindow):
         :return:
         """
         if self.pb_com_connect.text() == 'Connect Device':
+            self.device_com = self.cb_devices.currentText()
             shv.logger.debug(
                 "\tinit {} COM port connection and data thread".format(self.device_com)
             )
-            self.device_com = self.cb_devices.currentText()
+            # TODO: some random error appear when thread is started and get corrupt data
             self.thread = ThreadCom.COMStartThread(
                 device_com=self.device_com,
                 db_path=self.db_path
@@ -386,22 +386,33 @@ class MainWindow(QtWidgets.QMainWindow):
         :param com_data: str, data line form thread for ambient data COM device
         :return: None
         """
-        # TODO: insert new data in tv
-        if self.chb_real_time.isChecked():  # plot data in real time
+        # TODO: set table for display time interval data or to realtime data
+        if com_data == 'Serial is broken':
             shv.logger.debug(
-                "\tget COM data: {}".format(com_data)
+                "\tstop {} COM port connection and data thread".format(self.device_com)
             )
-            splitted = com_data.split(',')
+            self.pb_com_connect.setText('Connect Device')
+            return
+
+        shv.logger.debug("\t get COM data: {}".format(com_data))
+        com_data_now = {}
+        splitted = com_data.split(',')
+        for i in range(1, 5):
+            v_splitted = splitted[i].split('_')
+            v_type = v_splitted[0]
+            v_value = float(v_splitted[1])
+            com_data_now[v_type] = v_value
+        dp.set_table_data(
+            data_to_table=com_data_now,
+            tv_data_widget=self.tv_comdata,
+            time_stamp=splitted[0]
+        )
+
+        if self.chb_real_time.isChecked():
+            shv.logger.debug("\t start realtime plot")
             timestamp = list(map(int, splitted[0].split('_')))
             unixtime = int(time.mktime(datetime.datetime(*timestamp).timetuple()))
-            com_data_now = {
-                'unixtime': unixtime
-            }
-            for i in range(1, 5):
-                v_splitted = splitted[i].split('_')
-                v_type = v_splitted[0]
-                v_value = float(v_splitted[1])
-                com_data_now[v_type] = v_value
+            com_data_now['unixtime'] = unixtime
             self.update_plot(new_data=com_data_now)
 
     def get_db_data(self, sens_dtype, limit=100):
